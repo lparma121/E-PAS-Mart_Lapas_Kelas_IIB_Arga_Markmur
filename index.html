@@ -144,7 +144,8 @@
                                 <option value="E-Wallet">📱 E-Wallet (DANA)</option>
                             </select>
                             <div id="infoRekening" class="mt-2 text-sm bg-yellow-50 text-yellow-800 p-2 rounded border border-yellow-200 font-bold">
-                                BRI: 1234-5678-900 (Koperasi Lapas)
+                                BRI: 0318-0100-1106-561 (Kantin Koperasi Lapas)
+                                Dana: belum tersedia
                             </div>
                         </div>
                         <div><label class="text-sm font-bold block mb-1">Nama Pengirim</label><input type="text" id="p_nama" class="w-full px-3 py-2 rounded-lg border border-gray-300"></div>
@@ -244,10 +245,13 @@
         // ==========================================
         // 1. SETUP SUPABASE & CONFIG
         // ==========================================
-        // Wajib: Masukkan URL dan ANON KEY Supabase Anda di sini
-        const SUPABASE_URL = 'https://gdvphhymxlhuarvxwvtm.supabase.co/rest/v1/'; 
+        // URL Supabase wajib menggunakan Base URL, bukan /rest/v1/
+        const SUPABASE_URL = 'https://gdvphhymxlhuarvxwvtm.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnBoaHlteGxodWFydnh3dnRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMjU0MTEsImV4cCI6MjA4NDYwMTQxMX0.qOU1CIFxeZ64HJDmlaGX3yhr20kMn5Q8MJ2sy_b7__k';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // MENGHINDARI TABRAKAN VARIABEL GLOBAL: 
+        // Ubah nama variabel dari 'supabase' menjadi 'db'
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ==========================================
         // 2. CEK JAM OPERASIONAL
@@ -303,7 +307,7 @@
         // 4. ETALASE & KERANJANG
         // ==========================================
         async function fetchProducts() {
-            const { data, error } = await supabase.from('barang').select('*').gt('stok', 0).order('nama_barang');
+            const { data, error } = await db.from('barang').select('*').gt('stok', 0).order('nama_barang');
             if (error) console.error(error);
             else { products = data; renderProducts(""); }
         }
@@ -414,7 +418,7 @@
             const kode = document.getElementById('inputVoucher').value.trim();
             const msg = document.getElementById('pesanVoucher');
             if(!kode) return;
-            const { data, error } = await supabase.from('vouchers').select('*').eq('kode_voucher', kode).eq('is_active', true);
+            const { data, error } = await db.from('vouchers').select('*').eq('kode_voucher', kode).eq('is_active', true);
             if(data && data.length > 0) {
                 activeVoucher = { id: data[0].id, saldo: data[0].saldo, kode: data[0].kode_voucher };
                 msg.innerHTML = `<span class="text-success">✅ Berhasil! Potongan: ${formatRp(activeVoucher.saldo)}</span>`;
@@ -475,9 +479,9 @@
                 if(file) {
                     const ext = file.name.split('.').pop();
                     const path = `bukti_transfer/tf_${Date.now()}.${ext}`;
-                    const { data: ud, error: ue } = await supabase.storage.from('KANTIN-ASSETS').upload(path, file, { upsert: true });
+                    const { data: ud, error: ue } = await db.storage.from('KANTIN-ASSETS').upload(path, file, { upsert: true });
                     if(ue) throw ue;
-                    const { data: pd } = supabase.storage.from('KANTIN-ASSETS').getPublicUrl(path);
+                    const { data: pd } = db.storage.from('KANTIN-ASSETS').getPublicUrl(path);
                     imgUrl = pd.publicUrl;
                 }
 
@@ -489,17 +493,17 @@
                     cara_bayar: metode, no_resi: resi, created_at: new Date().toISOString()
                 };
 
-                const { error: eInsert } = await supabase.from('pesanan').insert(d_psn);
+                const { error: eInsert } = await db.from('pesanan').insert(d_psn);
                 if(eInsert) throw eInsert;
 
                 // Update stok
                 for(let item of keranjang) {
-                    await supabase.rpc('kurangi_stok_barang', { row_id: item.id, jumlah_kurangi: item.qty });
+                    await db.rpc('kurangi_stok_barang', { row_id: item.id, jumlah_kurangi: item.qty });
                 }
 
                 // Matikan voucher jika terpakai
                 if(activeVoucher.id) {
-                    await supabase.from('vouchers').update({ is_active: false }).eq('id', activeVoucher.id);
+                    await db.from('vouchers').update({ is_active: false }).eq('id', activeVoucher.id);
                 }
 
                 // Tampilkan sukses
@@ -536,7 +540,7 @@
             const resi = document.getElementById('inputLacak').value.trim();
             if(!resi) return Swal.fire('Info','Masukkan no resi','info');
             
-            const { data, error } = await supabase.from('pesanan').select('*').ilike('no_resi', `%${resi}`).order('id', {ascending: false});
+            const { data, error } = await db.from('pesanan').select('*').ilike('no_resi', `%${resi}`).order('id', {ascending: false});
             const hsl = document.getElementById('hasilLacak'); hsl.classList.remove('hidden');
             
             if(!data || data.length === 0) { hsl.innerHTML = '<div class="text-red-500 text-center font-bold">Resi tidak ditemukan.</div>'; return; }
@@ -592,17 +596,17 @@
                     for(let str of items) {
                         let q = 1, n = str;
                         if(str.includes('x ')) { const p = str.split('x '); q = parseInt(p[0]); n = p[1]; }
-                        // Restore stok manual (di js harus get lalu update krn beda table structure vs rpc)
-                        const {data: bData} = await supabase.from('barang').select('stok, harga').eq('nama_barang', n);
+                        
+                        const {data: bData} = await db.from('barang').select('stok, harga').eq('nama_barang', n);
                         if(bData && bData.length>0) {
-                            await supabase.from('barang').update({stok: bData[0].stok + q}).eq('nama_barang', n);
+                            await db.from('barang').update({stok: bData[0].stok + q}).eq('nama_barang', n);
                             r_tot += bData[0].harga * q;
                         }
                     }
                     
-                    await supabase.from('pesanan').update({status: "Dibatalkan"}).eq('id', d.id);
+                    await db.from('pesanan').update({status: "Dibatalkan"}).eq('id', d.id);
                     const kv = `REF-${Math.floor(Math.random()*(9999-1000+1))+1000}`;
-                    await supabase.from('vouchers').insert({kode_voucher: kv, saldo: r_tot, nama_penerima: d.nama_pemesan});
+                    await db.from('vouchers').insert({kode_voucher: kv, saldo: r_tot, nama_penerima: d.nama_pemesan});
                     
                     const imgV = drawVoucherCanvas(d.nama_pemesan, r_tot, kv, d.no_resi);
                     document.getElementById('hasilLacak').innerHTML = `
@@ -620,7 +624,7 @@
         async function kirimUlasan(id) {
             const rt = document.getElementById('r_rating').value;
             const km = document.getElementById('r_komen').value;
-            await supabase.from('pesanan').update({rating: parseInt(rt), ulasan: km}).eq('id', id);
+            await db.from('pesanan').update({rating: parseInt(rt), ulasan: km}).eq('id', id);
             Swal.fire('Sukses','Terima kasih atas ulasan Anda!','success');
             lacakPesanan();
         }
@@ -664,7 +668,7 @@
         function drawVoucherCanvas(nama, nominal, resi, resiAsal) {
             const c = document.createElement('canvas'); c.width = 650; c.height = 350;
             const ctx = c.getContext('2d');
-            ctx.fillStyle = '#EBF5FF'; ctx.fillRect(0, 0, c.width, c.height); // bm
+            ctx.fillStyle = '#EBF5FF'; ctx.fillRect(0, 0, c.width, c.height);
             ctx.strokeStyle = '#003399'; ctx.lineWidth = 3; ctx.strokeRect(20, 20, 610, 310);
             ctx.fillStyle = '#003399'; ctx.fillRect(31, 31, 588, 60);
             
