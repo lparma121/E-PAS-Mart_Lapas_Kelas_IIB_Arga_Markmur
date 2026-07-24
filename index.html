@@ -245,14 +245,14 @@
         // 1. SETUP SUPABASE & CONFIG
         // ==========================================
         // Wajib: Masukkan URL dan ANON KEY Supabase Anda di sini
-        const SUPABASE_URL = 'MASUKKAN_SUPABASE_URL_ANDA_DISINI'; 
-        const SUPABASE_KEY = 'MASUKKAN_SUPABASE_ANON_KEY_ANDA_DISINI';
+        const SUPABASE_URL = 'https://gdvphhymxlhuarvxwvtm.supabase.co/rest/v1/'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkdnBoaHlteGxodWFydnh3dnRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMjU0MTEsImV4cCI6MjA4NDYwMTQxMX0.qOU1CIFxeZ64HJDmlaGX3yhr20kMn5Q8MJ2sy_b7__k';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ==========================================
         // 2. CEK JAM OPERASIONAL
         // ==========================================
-        const JAM_BUKA = 7, JAM_TUTUP = 23;
+        const JAM_BUKA = 9, JAM_TUTUP = 15;
         function cekJamOperasional() {
             const now = new Date();
             const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
