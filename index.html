@@ -487,7 +487,7 @@
 
                 const resi = generateResi();
                 const d_psn = {
-                    nama_pemesan: nama, untuk_siapa: wbp, nomor_wa: wa,
+                    nama_pemesan: nama, untuk_siapa: wbp, nomor_wa: wa, //
                     item_pesanan: keranjang.map(x => `${x.qty}x ${x.nama}`).join(', '),
                     total_harga: finalTotalRaw, bukti_transfer: imgUrl, status: "Menunggu Verifikasi",
                     cara_bayar: metode, no_resi: resi, created_at: new Date().toISOString()
@@ -550,13 +550,14 @@
             let bg_color = d.status === 'Selesai' ? '#e8f5e9' : (d.status.includes('Batal') ? '#ffebee' : '#e3f2fd');
 
             let html = `
-                <hr class="my-4">
-                <p class="text-sm">📦 Resi: <b class="font-mono text-primary">${d.no_resi}</b></p>
-                <p class="text-sm">Penerima: <b>${d.untuk_siapa}</b></p>
-                <div style="background:${bg_color}; border:1px solid ${s_color};" class="p-3 rounded-xl text-center mt-3 mb-4">
-                    <h4 style="color:${s_color}" class="font-bold text-lg m-0">${d.status}</h4>
-                </div>
-            `;
+            <hr class="my-4">
+            <p class="text-sm">📦 Resi: <b class="font-mono text-primary">${d.no_resi}</b></p>
+            <p class="text-sm">Pemesan: <b>${d.nama_pemesan} (${d.nomor_wa || '-'})</b></p> 
+            <p class="text-sm">Penerima: <b>${d.untuk_siapa}</b></p>
+            <div style="background:${bg_color}; border:1px solid ${s_color};" class="p-3 rounded-xl text-center mt-3 mb-4">
+                <h4 style="color:${s_color}" class="font-bold text-lg m-0">${d.status}</h4>
+            </div>
+        `;
 
             if(d.foto_penerima) html += `<img src="${d.foto_penerima}" class="w-full rounded mb-4" alt="Bukti Serah Terima">`;
 
@@ -646,6 +647,7 @@
             ctx.fillText(`NO. RESI    : ${resi}`, 30, y); y += 25;
             ctx.fillText(`TANGGAL     : ${wibNowFormatted()} WIB`, 30, y); y += 25;
             ctx.fillText(`PENGIRIM    : ${d_psn.nama_pemesan}`, 30, y); y += 25;
+            ctx.fillText(`NO. WA      : ${d_psn.nomor_wa}`, 30, y); y += 25; 
             ctx.fillText(`PENERIMA    : ${d_psn.untuk_siapa}`, 30, y); y += 25;
             
             ctx.beginPath(); ctx.moveTo(20, y+5); ctx.lineTo(480, y+5); ctx.lineWidth = 1; ctx.strokeStyle='gray'; ctx.stroke(); y += 30;
