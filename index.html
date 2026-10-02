@@ -86,6 +86,14 @@
                     <img src="https://img.icons8.com/fluency/96/in-transit.png" class="h-16 mx-auto mb-3">
                     <h4 class="font-bold text-sm mb-1">4. Pantau</h4><p class="text-xs text-gray-500">Cek status penyerahan.</p>
                 </div>
+                <div class="mt-8 mb-4">
+                <h3 class="text-center text-xl font-bold text-gray-800 mb-6">⭐ Apa Kata Mereka?</h3>
+                <!-- Container list ulasan (Horizontal Scroll) -->
+                <div id="ulasanContainer" class="flex overflow-x-auto gap-4 pb-4 snap-x">
+                    <div class="w-full text-center text-sm py-4 text-gray-500">
+                        <i class="fas fa-spinner fa-spin text-primary"></i> Memuat ulasan...
+                    </div>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -717,13 +725,70 @@
             
             if(tabId === 'tab-checkout') updateCheckoutUI();
         }
+// ==========================================
+        // 9.5 FITUR TAMPILAN ULASAN BERANDA
+        // ==========================================
+        // Fungsi untuk menyamarkan nama (Contoh: "Andika" -> "A****a")
+        function samarkanNama(nama) {
+            if (!nama) return "NN";
+            const kata = nama.trim().split(' ');
+            const kataDisamarkan = kata.map(k => {
+                if (k.length <= 2) return k; // Jika nama terlalu pendek
+                const awal = k.charAt(0);
+                const akhir = k.charAt(k.length - 1);
+                const tengah = '*'.repeat(k.length - 2);
+                return awal + tengah + akhir;
+            });
+            return kataDisamarkan.join(' ');
+        }
 
+        async function fetchUlasan() {
+            const container = document.getElementById('ulasanContainer');
+            try {
+                // Mengambil 10 data ulasan terbaru yang memiliki rating (tidak null)
+                const { data, error } = await db.from('pesanan')
+                    .select('nama_pemesan, rating, ulasan')
+                    .not('rating', 'is', null)
+                    .order('id', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<div class="w-full text-center text-gray-500 text-sm py-4">Belum ada ulasan yang diberikan.</div>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(item => {
+                    const bintang = '⭐'.repeat(item.rating);
+                    const namaSamaran = samarkanNama(item.nama_pemesan);
+                    const teksUlasan = item.ulasan ? `"${item.ulasan}"` : '<span class="text-gray-400 italic">Tidak ada teks ulasan</span>';
+                    
+                    html += `
+                        <div class="min-w-[240px] max-w-[240px] bg-white p-4 rounded-xl border border-gray-200 shadow-sm snap-center shrink-0 flex flex-col justify-between">
+                            <p class="text-sm text-gray-700 mb-3 italic line-clamp-3">${teksUlasan}</p>
+                            <div class="border-t pt-2 mt-auto">
+                                <p class="text-xs font-bold text-gray-900">${namaSamaran}</p>
+                                <p class="text-xs mt-1">${bintang}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error("Error memuat ulasan:", err);
+                container.innerHTML = '<div class="w-full text-center text-red-500 text-sm py-4">Gagal memuat ulasan.</div>';
+            }
+        }
         // ==========================================
         // 10. INIT
         // ==========================================
         document.getElementById('searchInput').addEventListener('input', (e) => renderProducts(e.target.value));
         if (cekJamOperasional()) {
             fetchProducts();
+            fetchUlasan();
         }
     </script>
 </body>
