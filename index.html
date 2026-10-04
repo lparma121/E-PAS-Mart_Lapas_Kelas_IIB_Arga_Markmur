@@ -135,25 +135,37 @@
                         <div id="listCheckout" class="text-sm text-gray-600 mb-3 space-y-1"></div>
                         <div id="infoVoucherDipakai" class="text-sm text-primary font-bold mb-3 hidden"></div>
                         
-                        <div class="bg-blue-50 border-2 border-dashed border-primary p-4 rounded-xl text-center cursor-pointer" onclick="salinTotal()">
+                        <div class="bg-blue-50 border-2 border-dashed border-primary p-4 rounded-xl text-center">
                             <p class="text-xs text-gray-600 mb-1">Total + Kode Unik (<b class="text-red-600" id="txtKodeUnik"></b>)</p>
                             <h3 class="text-primary font-bold text-sm mb-1">TOTAL TRANSFER:</h3>
-                            <h2 class="text-2xl font-extrabold text-gray-900" id="txtTotalTransfer">Rp0 📋</h2>
-                            <p class="text-xs text-green-600 mt-1 hidden" id="msgCopyTotal">✅ Tersalin!</p>
+                            <h2 class="text-2xl font-extrabold text-gray-900 mb-3" id="txtTotalTransfer">Rp0</h2>
+                            <button onclick="salinTotal()" class="w-full bg-white border border-primary text-primary font-bold py-2 rounded-lg text-sm flex justify-center items-center gap-2 hover:bg-blue-100 transition">
+                                <i class="fas fa-copy"></i> Salin Nominal
+                            </button>
+                            <p class="text-xs text-green-600 mt-2 hidden font-bold" id="msgCopyTotal">✅ Nominal Tersalin!</p>
                         </div>
-                    </div>
 
                     <!-- Form Pengiriman -->
                     <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4 space-y-4">
                         <div>
+                           <div>
                             <label class="text-sm font-bold block mb-1">Metode Pembayaran</label>
-                            <select id="caraBayar" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-primary focus:outline-none" onchange="updateRekening()">
-                                <option value="Transfer Bank">🏦 Transfer Bank</option>
-                                <option value="E-Wallet">📱 E-Wallet (DANA)</option>
+                            <select id="caraBayar" class="w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-100 focus:outline-none" readonly>
+                                <option value="Transfer Bank">🏦 Transfer Bank (BRI)</option>
                             </select>
-                            <div id="infoRekening" class="mt-2 text-sm bg-yellow-50 text-yellow-800 p-2 rounded border border-yellow-200 font-bold">
-                                BRI: 0318-0100-1106-561 (Kantin Koperasi Lapas)
-                                Dana: belum tersedia
+                            
+                            <div class="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                                <p class="text-xs text-blue-800 mb-1">Bank Tujuan:</p>
+                                <p class="font-bold text-gray-900">BANK BRI</p>
+                                <p class="text-xs text-blue-800 mt-2 mb-1">Nomor Rekening:</p>
+                                <div class="flex items-center justify-between bg-white px-3 py-2 border border-gray-200 rounded-lg">
+                                    <span class="font-mono font-bold text-lg text-primary tracking-wider" id="txtNoRek">031801001106561</span>
+                                    <button onclick="salinRekening()" class="text-primary hover:text-blue-700 bg-blue-50 p-2 rounded text-sm flex items-center gap-1 font-bold transition">
+                                        <i class="fas fa-copy"></i> Salin
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-gray-500 mt-1 italic">a.n Kantin Koperasi Lapas</p>
+                                <p class="text-xs text-green-600 mt-1 hidden font-bold" id="msgCopyRek">✅ Nomor Rekening Tersalin!</p>
                             </div>
                         </div>
                         <div><label class="text-sm font-bold block mb-1">Nama Pengirim</label><input type="text" id="p_nama" class="w-full px-3 py-2 rounded-lg border border-gray-300"></div>
@@ -452,12 +464,16 @@
             if (total === 0) finalTotalRaw = 0; // Jika kosong
 
             document.getElementById('txtKodeUnik').innerText = kodeUnik;
-            document.getElementById('txtTotalTransfer').innerText = formatRp(finalTotalRaw) + ' 📋';
+            // Hapus emoji clipboard dari teks karena sekarang sudah ada tombol sendiri
+            document.getElementById('txtTotalTransfer').innerText = formatRp(finalTotalRaw);
 
             const cb = document.getElementById('caraBayar');
-            if (finalTotalRaw === 0 && total > 0) { cb.innerHTML = '<option>🎫 Voucher (Lunas)</option>'; }
-            else { cb.innerHTML = '<option value="Transfer Bank">🏦 Transfer Bank</option><option value="E-Wallet">📱 E-Wallet (DANA)</option>'; }
-            updateRekening();
+            if (finalTotalRaw === 0 && total > 0) { 
+                cb.innerHTML = '<option>🎫 Voucher (Lunas)</option>'; 
+            } else { 
+                cb.innerHTML = '<option value="Transfer Bank">🏦 Transfer Bank (BRI)</option>'; 
+            }
+            // Hapus pemanggilan updateRekening() karena opsi E-wallet sudah dihapus
         }
 
         function updateRekening() {
@@ -708,7 +724,11 @@
         // ==========================================
         function salinTotal() { navigator.clipboard.writeText(finalTotalRaw); document.getElementById('msgCopyTotal').classList.remove('hidden'); setTimeout(()=>document.getElementById('msgCopyTotal').classList.add('hidden'), 2000); }
         function salinResi() { navigator.clipboard.writeText(document.getElementById('txtResiSukses').innerText); document.getElementById('msgCopyResi').classList.remove('hidden'); setTimeout(()=>document.getElementById('msgCopyResi').classList.add('hidden'), 2000); }
-
+        function salinRekening() {
+            navigator.clipboard.writeText("031801001106561"); 
+            document.getElementById('msgCopyRek').classList.remove('hidden'); 
+            setTimeout(()=>document.getElementById('msgCopyRek').classList.add('hidden'), 2000);
+        }
         // ==========================================
         // 9. TAB SWITCHER (SPA ROUTING)
         // ==========================================
