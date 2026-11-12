@@ -71,8 +71,8 @@
             <div class="bg-gradient-to-r from-blue-500 to-primary text-white p-5 rounded-2xl shadow-md mb-8 flex items-center gap-4">
                 <div class="text-4xl"><i class="fas fa-gift"></i></div>
                 <div>
-                    <h3 class="font-extrabold text-lg">🎁 Program Reward Belanja 10x!</h3>
-                    <p class="text-xs md:text-sm opacity-90">Dapatkan diskon spesial di setiap kelipatan 10x transaksi sukses. Diskon setara dengan akumulasi seluruh kode unik Anda sebelumnya!</p>
+                    <h3 class="font-extrabold text-lg">🎁 Program Reward Diskon 10x Belanja!</h3>
+                    <p class="text-xs md:text-sm opacity-90">Uang kode unik yang Anda keluarkan pada setiap transaksi tidak akan hilang! Pada transaksi ke-10 (dan kelipatannya), seluruh akumulasi murni kode unik Anda sebelumnya akan dikembalikan sebagai potongan diskon belanja.</p>
                 </div>
             </div>
 
@@ -127,12 +127,12 @@
                 <div id="checkout-form-container">
                     <h3 class="text-xl font-bold mb-4"><i class="fas fa-wallet text-primary"></i> Proses Pembayaran</h3>
                     
-                    <!-- Form Pengiriman (Dipindah ke atas agar No WA bisa mendeteksi Reward 10x lebih awal) -->
+                    <!-- Form Pengiriman (No WA di atas agar bisa dicek otomatis) -->
                     <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4 space-y-4">
                         <div><label class="text-sm font-bold block mb-1">Nama Pengirim</label><input type="text" id="p_nama" class="w-full px-3 py-2 rounded-lg border border-gray-300"></div>
                         <div><label class="text-sm font-bold block mb-1">Nama WBP + Bin/Binti (Penerima)</label><input type="text" id="p_wbp" class="w-full px-3 py-2 rounded-lg border border-gray-300"></div>
                         <div>
-                            <label class="text-sm font-bold block mb-1">Nomor WhatsApp (Untuk Cek Reward 10x Belanja)</label>
+                            <label class="text-sm font-bold block mb-1">Nomor WhatsApp (Cek Reward Akumulasi Kode Unik)</label>
                             <input type="text" id="p_wa" onblur="cekRewardLoyalitas()" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 rounded-lg border border-gray-300">
                             <p id="infoRewardWa" class="text-xs mt-1 font-bold text-primary hidden"></p>
                         </div>
@@ -166,7 +166,7 @@
                         </div>
                     </div>
                     
-                    <!-- Metode Bayar & Upload -->
+                    <!-- Form Rekening & Upload -->
                     <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4 space-y-4">
                         <div>
                             <label class="text-sm font-bold block mb-1">Metode Pembayaran</label>
@@ -313,7 +313,7 @@
         let keranjang = [];
         let kodeUnik = Math.floor(Math.random() * (299 - 11 + 1)) + 11;
         let activeVoucher = { id: null, saldo: 0, kode: null };
-        let diskonRewardLoyalitas = 0; // Variabel penampung diskon reward 10x
+        let diskonRewardLoyalitas = 0; // Variabel penampung akumulasi murni kode unik
         let finalTotalRaw = 0;
 
         const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka);
@@ -442,7 +442,7 @@
         }
 
         // ==========================================
-        // 5. CHECKOUT, VOUCHER & REWARD 10X BELANJA
+        // 5. CHECKOUT, VOUCHER & REWARD AKUMULASI KODE UNIK
         // ==========================================
         function lanjutPembayaran() {
             toggleCartModal();
@@ -464,7 +464,7 @@
             updateCheckoutUI();
         }
 
-        // FUNGSI CEK REWARD 10X BELANJA BERDASARKAN NOMOR WA
+        // FUNGSI CEK REWARD BERDASARKAN AKUMULASI MURNI KODE UNIK DARI NOMOR WA
         async function cekRewardLoyalitas() {
             const wa = document.getElementById('p_wa').value.trim();
             const infoWa = document.getElementById('infoRewardWa');
@@ -476,9 +476,9 @@
                 return;
             }
 
-            // Ambil semua pesanan sukses dari nomor WA tersebut
+            // Ambil data pesanan sukses berdasarkan nomor WA
             const { data, error } = await db.from('pesanan')
-                .select('*')
+                .select('kode_unik, status')
                 .eq('nomor_wa', wa)
                 .eq('status', 'Selesai');
 
@@ -488,18 +488,15 @@
                 const progressKe = sisaKeSembilan === 0 && totalSukses > 0 ? 10 : sisaKeSembilan;
 
                 if (totalSukses > 0 && totalSukses % 10 === 0) {
-                    // Berhak diskon! Akumulasi seluruh kode unik dari transaksi-transaksi sebelumnya
-                    // Karena kode unik disimpan di total_harga (atau kita bisa estimasi dari selisih, tapi mari hitung akumulasi total_harga asli atau rata-rata kode unik)
-                    // Berdasarkan sistem, setiap transaksi memiliki kode unik random antara 11 s.d 299. 
-                    // Kita asumsikan diskon reward adalah akumulasi rata-rata kode unik (misal 150 per transaksi * 10 = 1500) atau kita bisa ambil dari kolom jika dicatat. 
-                    // Untuk amannya, kita berikan potongan reward tetap / akumulasi estimasi sebesar Rp1.500 per kelipatan atau akumulasi dari transaksi history jika ada.
-                    // Mari kita buat akumulasi dari riwayat (total_harga - total murni barang, atau estimasi 150 * 10 = 1.500 rupiah per transaksi). 
-                    // Lebih presisi: kita hitung akumulasi diskon reward senilai total kelipatan 10 transaksi (misal akumulasi kode unik terkumpul).
-                    diskonRewardLoyalitas = 1500 * (totalSukses / 10); // Contoh akumulasi reward diskon
-                    infoWa.innerHTML = `🎉 Selamat! Nomor WA ini telah mencapai ${totalSukses}x transaksi sukses. Anda Mendapat Diskon Reward Loyalitas sebesar ${formatRp(diskonRewardLoyalitas)}!`;
+                    // AKUMULASI MURNI: Jumlahkan tepat seluruh nilai 'kode_unik' dari transaksi sukses sebelumnya
+                    let totalAkumulasiKodeUnik = data.reduce((sum, item) => sum + (parseInt(item.kode_unik) || 0), 0);
+                    
+                    diskonRewardLoyalitas = totalAkumulasiKodeUnik;
+                    
+                    infoWa.innerHTML = `🎉 Selamat! Transaksi ke-${totalSukses} tercapai. Akumulasi murni seluruh kode unik Anda sebelumnya sebesar <b>${formatRp(diskonRewardLoyalitas)}</b> otomatis dipakai sebagai potongan belanja!`;
                     infoWa.classList.remove('hidden');
                 } else {
-                    infoWa.innerHTML = `ℹ️ Riwayat transaksi sukses: ${totalSukses}x. (Belanja ${10 - progressKe}x lagi untuk klaim Diskon Reward Loyalitas 10x!)`;
+                    infoWa.innerHTML = `ℹ️ Riwayat transaksi sukses: ${totalSukses}x. (Belanja ${10 - progressKe}x lagi untuk mencairkan akumulasi murni kode unik Anda!)`;
                     infoWa.classList.remove('hidden');
                 }
             }
@@ -519,11 +516,11 @@
 
             const rInfo = document.getElementById('infoDiskonReward');
             if(diskonRewardLoyalitas > 0) {
-                rInfo.innerText = `🎁 Potongan Diskon Reward 10x: -${formatRp(diskonRewardLoyalitas)}`;
+                rInfo.innerText = `🎁 Potongan Akumulasi Kode Unik: -${formatRp(diskonRewardLoyalitas)}`;
                 rInfo.classList.remove('hidden');
             } else { rInfo.classList.add('hidden'); }
 
-            // Hitung total akhir setelah dikurangi voucher dan reward loyalitas 10x
+            // Hitung total akhir setelah dikurangi voucher & akumulasi kode unik
             finalTotalRaw = Math.max(0, (total + kodeUnik) - activeVoucher.saldo - diskonRewardLoyalitas);
             if (total === 0) finalTotalRaw = 0;
 
@@ -565,10 +562,17 @@
 
                 const resi = generateResi();
                 const d_psn = {
-                    nama_pemesan: nama, untuk_siapa: wbp, nomor_wa: wa,
+                    nama_pemesan: nama, 
+                    untuk_siapa: wbp, 
+                    nomor_wa: wa,
                     item_pesanan: keranjang.map(x => `${x.qty}x ${x.nama}`).join(', '),
-                    total_harga: finalTotalRaw, bukti_transfer: imgUrl, status: "Menunggu Verifikasi",
-                    cara_bayar: metode, no_resi: resi, created_at: new Date().toISOString()
+                    total_harga: finalTotalRaw, 
+                    kode_unik: kodeUnik, // Disimpan untuk diakumulasikan di masa mendatang
+                    bukti_transfer: imgUrl, 
+                    status: "Menunggu Verifikasi",
+                    cara_bayar: metode, 
+                    no_resi: resi, 
+                    created_at: new Date().toISOString()
                 };
 
                 const { error: eInsert } = await db.from('pesanan').insert(d_psn);
