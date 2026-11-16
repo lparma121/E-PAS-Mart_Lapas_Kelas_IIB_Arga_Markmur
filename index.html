@@ -72,7 +72,7 @@
                 <div class="text-4xl"><i class="fas fa-gift"></i></div>
                 <div>
                     <h3 class="font-extrabold text-lg">🎁 Program Reward Diskon 10x Belanja!</h3>
-                    <p class="text-xs md:text-sm opacity-90">Uang kode unik yang Anda keluarkan pada setiap transaksi tidak akan hilang! Pada transaksi ke-10 (dan kelipatannya), seluruh akumulasi murni kode unik Anda sebelumnya akan dikembalikan sebagai potongan diskon belanja.</p>
+                    <p class="text-xs md:text-sm opacity-90">Uang kode unik yang Anda keluarkan pada setiap transaksi tidak akan hilang[cite: 4]. Pada transaksi ke-10 (dan kelipatannya), seluruh akumulasi murni kode unik Anda sebelumnya akan dikembalikan sebagai potongan diskon belanja[cite: 4].</p>
                 </div>
             </div>
 
@@ -567,7 +567,7 @@
                     nomor_wa: wa,
                     item_pesanan: keranjang.map(x => `${x.qty}x ${x.nama}`).join(', '),
                     total_harga: finalTotalRaw, 
-                    kode_unik: kodeUnik, // Disimpan untuk diakumulasikan di masa mendatang
+                    kode_unik: kodeUnik, // Disimpan agar terekam di database untuk akumulasi murni
                     bukti_transfer: imgUrl, 
                     status: "Menunggu Verifikasi",
                     cara_bayar: metode, 
