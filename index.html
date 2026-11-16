@@ -72,7 +72,7 @@
                 <div class="text-4xl"><i class="fas fa-gift"></i></div>
                 <div>
                     <h3 class="font-extrabold text-lg">🎁 Program Reward Diskon 10x Belanja!</h3>
-                    <p class="text-xs md:text-sm opacity-90">Uang kode unik yang Anda keluarkan pada setiap transaksi tidak akan hilang[cite: 4]. Pada transaksi ke-10 (dan kelipatannya), seluruh akumulasi murni kode unik Anda sebelumnya akan dikembalikan sebagai potongan diskon belanja[cite: 4].</p>
+                    <p class="text-xs md:text-sm opacity-90">Uang kode unik yang Anda keluarkan pada setiap transaksi tidak akan hilang. Pada setiap kelipatan 10 transaksi sukses, seluruh akumulasi murni kode unik Anda sebelumnya akan dicairkan sebagai potongan diskon, dan hitungan akan reset kembali dari nol secara adil!</p>
                 </div>
             </div>
 
@@ -313,7 +313,8 @@
         let keranjang = [];
         let kodeUnik = Math.floor(Math.random() * (299 - 11 + 1)) + 11;
         let activeVoucher = { id: null, saldo: 0, kode: null };
-        let diskonRewardLoyalitas = 0; // Variabel penampung akumulasi murni kode unik
+        let diskonRewardLoyalitas = 0; 
+        let idTransaksiDiklaim = []; // Menyimpan ID pesanan yang kode uniknya dicairkan
         let finalTotalRaw = 0;
 
         const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka);
@@ -442,7 +443,7 @@
         }
 
         // ==========================================
-        // 5. CHECKOUT, VOUCHER & REWARD AKUMULASI KODE UNIK
+        // 5. CHECKOUT, VOUCHER & REWARD AKUMULASI KODE UNIK (DENGAN RESET)
         // ==========================================
         function lanjutPembayaran() {
             toggleCartModal();
@@ -464,11 +465,12 @@
             updateCheckoutUI();
         }
 
-        // FUNGSI CEK REWARD BERDASARKAN AKUMULASI MURNI KODE UNIK DARI NOMOR WA
+        // FUNGSI CEK REWARD BERDASARKAN TRANSAKSI YANG BELUM DIKLAIM (KODE_UNIK_KLAIM = FALSE)
         async function cekRewardLoyalitas() {
             const wa = document.getElementById('p_wa').value.trim();
             const infoWa = document.getElementById('infoRewardWa');
-            diskonRewardLoyalitas = 0; // Reset diskon
+            diskonRewardLoyalitas = 0; 
+            idTransaksiDiklaim = []; // Reset penampung ID
 
             if (!wa || wa.length < 5) {
                 infoWa.classList.add('hidden');
@@ -476,27 +478,28 @@
                 return;
             }
 
-            // Ambil data pesanan sukses berdasarkan nomor WA
+            // Hanya ambil pesanan sukses yang kode uniknya BELUM diklaim
             const { data, error } = await db.from('pesanan')
-                .select('kode_unik, status')
+                .select('id, kode_unik, status')
                 .eq('nomor_wa', wa)
-                .eq('status', 'Selesai');
+                .eq('status', 'Selesai')
+                .eq('kode_unik_klaim', false);
 
             if (data) {
-                const totalSukses = data.length;
-                const sisaKeSembilan = totalSukses % 10;
-                const progressKe = sisaKeSembilan === 0 && totalSukses > 0 ? 10 : sisaKeSembilan;
+                const totalBelumKlaim = data.length;
+                const sisaKeSembilan = totalBelumKlaim % 10;
+                const progressKe = sisaKeSembilan === 0 && totalBelumKlaim > 0 ? 10 : sisaKeSembilan;
 
-                if (totalSukses > 0 && totalSukses % 10 === 0) {
-                    // AKUMULASI MURNI: Jumlahkan tepat seluruh nilai 'kode_unik' dari transaksi sukses sebelumnya
-                    let totalAkumulasiKodeUnik = data.reduce((sum, item) => sum + (parseInt(item.kode_unik) || 0), 0);
+                if (totalBelumKlaim > 0 && totalBelumKlaim % 10 === 0) {
+                    // Akumulasi murni dari transaksi yang belum diklaim
+                    diskonRewardLoyalitas = data.reduce((sum, item) => sum + (parseInt(item.kode_unik) || 0), 0);
+                    // Simpan ID baris transaksi agar nanti ditandai true (reset)
+                    idTransaksiDiklaim = data.map(item => item.id);
                     
-                    diskonRewardLoyalitas = totalAkumulasiKodeUnik;
-                    
-                    infoWa.innerHTML = `🎉 Selamat! Transaksi ke-${totalSukses} tercapai. Akumulasi murni seluruh kode unik Anda sebelumnya sebesar <b>${formatRp(diskonRewardLoyalitas)}</b> otomatis dipakai sebagai potongan belanja!`;
+                    infoWa.innerHTML = `🎉 Selamat! Terkumpul ${totalBelumKlaim} transaksi belum diklaim. Akumulasi murni kode unik sebesar <b>${formatRp(diskonRewardLoyalitas)}</b> otomatis menjadi potongan belanja!`;
                     infoWa.classList.remove('hidden');
                 } else {
-                    infoWa.innerHTML = `ℹ️ Riwayat transaksi sukses: ${totalSukses}x. (Belanja ${10 - progressKe}x lagi untuk mencairkan akumulasi murni kode unik Anda!)`;
+                    infoWa.innerHTML = `ℹ️ Transaksi aktif belum diklaim: ${totalBelumKlaim}x. (Belanja ${10 - progressKe}x lagi untuk mencairkan akumulasi kode unik!)`;
                     infoWa.classList.remove('hidden');
                 }
             }
@@ -567,7 +570,8 @@
                     nomor_wa: wa,
                     item_pesanan: keranjang.map(x => `${x.qty}x ${x.nama}`).join(', '),
                     total_harga: finalTotalRaw, 
-                    kode_unik: kodeUnik, // Disimpan agar terekam di database untuk akumulasi murni
+                    kode_unik: kodeUnik, 
+                    kode_unik_klaim: false, // Default awal belum diklaim
                     bukti_transfer: imgUrl, 
                     status: "Menunggu Verifikasi",
                     cara_bayar: metode, 
@@ -588,6 +592,13 @@
                     await db.from('vouchers').update({ is_active: false }).eq('id', activeVoucher.id);
                 }
 
+                // JIKA REWARD KODE UNIK DIPAKAI: Tandai true (reset) agar transaksi lama tidak terhitung dobel di masa depan
+                if (diskonRewardLoyalitas > 0 && idTransaksiDiklaim.length > 0) {
+                    await db.from('pesanan')
+                        .update({ kode_unik_klaim: true })
+                        .in('id', idTransaksiDiklaim);
+                }
+
                 // Tampilkan sukses
                 document.getElementById('checkout-form-container').classList.add('hidden');
                 document.getElementById('sukses-container').classList.remove('hidden');
@@ -597,8 +608,8 @@
                 document.getElementById('imgStruk').src = b64Struk;
                 document.getElementById('btnDownloadStruk').href = b64Struk;
 
-                // Reset
-                keranjang = []; kodeUnik = Math.floor(Math.random() * (299 - 11 + 1)) + 11; activeVoucher = {id:null, saldo:0, kode:null}; diskonRewardLoyalitas = 0;
+                // Reset state lokal
+                keranjang = []; kodeUnik = Math.floor(Math.random() * (299 - 11 + 1)) + 11; activeVoucher = {id:null, saldo:0, kode:null}; diskonRewardLoyalitas = 0; idTransaksiDiklaim = [];
                 refreshAll();
                 
             } catch(e) {
